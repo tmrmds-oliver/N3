@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JLPT N3 地獄特訓 - 雙重多選</title>
+    <title>JLPT N3 地獄特訓 - 首頁與測驗</title>
     <style>
         :root {
             --primary: #2c3e50;
@@ -11,6 +11,7 @@
             --success: #27ae60;
             --bg: #f5f6fa;
             --card: #ffffff;
+            --info: #3498db;
         }
 
         body {
@@ -33,12 +34,60 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             padding: 30px;
             text-align: center;
+            display: none; /* Hidden by default, JS toggles this */
         }
 
-        h1 {
-            font-size: 1.5rem;
-            margin-bottom: 10px;
+        /* Show start screen by default via JS, but handle FOUC */
+        #start-screen { display: block; }
+
+        h1 { font-size: 1.8rem; margin-bottom: 10px; color: var(--primary); }
+        h2 { font-size: 1.2rem; color: #7f8c8d; margin-bottom: 30px; font-weight: normal; }
+
+        .dashboard-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: #ecf0f1;
+            padding: 20px;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
             color: var(--primary);
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: #7f8c8d;
+            margin-top: 5px;
+        }
+
+        .stat-card.highlight .stat-number { color: var(--success); }
+        .stat-card.total .stat-number { color: var(--info); }
+
+        .progress-bar-container {
+            width: 100%;
+            height: 10px;
+            background-color: #ecf0f1;
+            border-radius: 5px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background-color: var(--success);
+            width: 0%;
+            transition: width 0.5s ease;
         }
 
         .stats {
@@ -51,9 +100,7 @@
             padding-bottom: 10px;
         }
 
-        .question-box {
-            margin: 30px 0;
-        }
+        .question-box { margin: 30px 0; }
 
         .kanji-display {
             font-size: 3.5rem;
@@ -70,15 +117,13 @@
 
         .options-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr); /* Mobile default */
+            grid-template-columns: repeat(2, 1fr);
             gap: 12px;
             margin-bottom: 25px;
         }
 
         @media (min-width: 600px) {
-            .options-grid {
-                grid-template-columns: repeat(4, 1fr); /* Desktop */
-            }
+            .options-grid { grid-template-columns: repeat(4, 1fr); }
         }
 
         .option-btn {
@@ -96,71 +141,77 @@
             user-select: none;
         }
 
-        .option-btn:hover {
-            border-color: var(--primary);
-            background-color: #ecf0f1;
-        }
-
-        .option-btn.selected {
-            background-color: var(--primary);
-            color: white;
-            border-color: var(--primary);
-        }
-
-        /* 答錯時的樣式 */
-        .option-btn.wrong {
-            background-color: #ffdad7;
-            border-color: var(--accent);
-            color: var(--accent);
-        }
-        
-        /* 答對時的樣式 */
-        .option-btn.correct {
-            background-color: #d5f5e3;
-            border-color: var(--success);
-            color: var(--success);
-        }
+        .option-btn:hover { border-color: var(--primary); background-color: #ecf0f1; }
+        .option-btn.selected { background-color: var(--primary); color: white; border-color: var(--primary); }
+        .option-btn.wrong { background-color: #ffdad7; border-color: var(--accent); color: var(--accent); }
+        .option-btn.correct { background-color: #d5f5e3; border-color: var(--success); color: var(--success); }
 
         .action-btn {
             background-color: var(--primary);
             color: white;
             border: none;
-            padding: 12px 40px;
-            font-size: 1.1rem;
-            border-radius: 25px;
+            padding: 15px 50px;
+            font-size: 1.2rem;
+            border-radius: 30px;
             cursor: pointer;
-            transition: transform 0.1s;
+            transition: transform 0.1s, background-color 0.2s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
 
-        .action-btn:active {
-            transform: scale(0.98);
-        }
-
-        .action-btn:disabled {
-            background-color: #bdc3c7;
-            cursor: not-allowed;
-        }
-
-        .feedback {
-            margin-top: 20px;
-            min-height: 24px;
+        .action-btn:hover { background-color: #34495e; }
+        .action-btn:active { transform: scale(0.98); }
+        .action-btn:disabled { background-color: #bdc3c7; cursor: not-allowed; }
+        
+        .start-btn {
+            background-color: var(--accent); 
             font-weight: bold;
+            animation: pulse 2s infinite;
         }
 
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(231, 76, 60, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); }
+        }
+
+        .feedback { margin-top: 20px; min-height: 24px; font-weight: bold; }
         .feedback.error { color: var(--accent); }
         .feedback.success { color: var(--success); }
-
-        #result-screen {
-            display: none;
-        }
     </style>
 </head>
 <body>
 
+<div class="container" id="start-screen">
+    <h1>JLPT N3 單字地獄特訓</h1>
+    <h2>準備好面對容易混淆的讀音與陷阱了嗎？</h2>
+
+    <div class="dashboard-stats">
+        <div class="stat-card total">
+            <div class="stat-number" id="total-words-display">0</div>
+            <div class="stat-label">總題庫單字數</div>
+        </div>
+        <div class="stat-card highlight">
+            <div class="stat-number" id="mastered-words-display">0</div>
+            <div class="stat-label">歷史累積熟練數</div>
+            <div class="progress-bar-container">
+                <div class="progress-bar" id="mastery-progress-bar"></div>
+            </div>
+        </div>
+    </div>
+
+    <p style="margin-bottom: 30px; line-height: 1.6;">
+        規則：每回合 <strong>20</strong> 題。<br>
+        必須同時選對「拼音」與「中文意思」才算過關。<br>
+        答錯的題目會被退回隊列，直到您學會為止。
+    </p>
+
+    <button class="action-btn start-btn" onclick="startSession()">開始挑戰</button>
+</div>
+
 <div class="container" id="quiz-screen">
     <div class="stats">
-        <span id="progress-text">進度: 0 / 20</span>
-        <span id="remaining-text">剩餘題數: 20</span>
+        <span id="progress-text">本回進度: 0 / 20</span>
+        <span id="remaining-text">剩餘隊列: 20</span>
     </div>
 
     <div class="question-box">
@@ -179,7 +230,8 @@
 <div class="container" id="result-screen">
     <div class="kanji-display">特訓結束</div>
     <p>恭喜你完成了一輪 20 題的地獄特訓。</p>
-    <button class="action-btn" onclick="location.reload()">再來一回</button>
+    <p id="session-summary"></p>
+    <button class="action-btn" onclick="location.reload()">返回首頁</button>
 </div>
 
 <script>
@@ -201,7 +253,7 @@ const rawData = [
     {w:"通り掛かる", r:"とおりかかる", m:"剛好經過"},
     {w:"真っ青な", r:"まっさおな", m:"蔚藍、臉色蒼白的"},
     {w:"夢中な", r:"むちゅうな", m:"沈迷"},
-    {w:"とれる", r:"とれる", m:"消失"}, // Hiragana word, tricky
+    {w:"とれる", r:"とれる", m:"消失"},
     {w:"嗅ぐ", r:"かぐ", m:"聞、嗅"},
     {w:"おかず", r:"おかず", m:"配菜"},
     {w:"貧しい", r:"まずしい", m:"貧困"},
@@ -231,7 +283,7 @@ const rawData = [
     {w:"省く", r:"はぶく", m:"減去"},
     {w:"瞼", r:"まぶた", m:"眼皮"},
     {w:"眉毛", r:"まゆげ", m:"眉毛"},
-    {w:"しっょちょう", r:"しっょちょう", m:"常常"}, // Note: User input seems to be "しょっちゅう"? Keeping user input but this looks like a typo in prompt. Assuming "しょっちゅう"
+    {w:"しっょちょう", r:"しっょちょう", m:"常常"},
     {w:"ばらばらな", r:"ばらばらな", m:"凌亂"},
     {w:"削除", r:"さくじょ", m:"刪除"},
     {w:"ぬるい", r:"ぬるい", m:"溫和"},
@@ -318,7 +370,7 @@ const rawData = [
     {w:"朗らかな", r:"ほがらかな", m:"開朗"},
     {w:"可愛がる", r:"かわいがる", m:"寵愛"},
     {w:"袖", r:"そで", m:"袖子"},
-    {w:"掛ける", r:"かける", m:"坐"}, // Context dependent, keeping user definition
+    {w:"掛ける", r:"かける", m:"坐"},
     {w:"剃る", r:"そる", m:"刮"},
     {w:"揃う", r:"そろう", m:"聚集"},
     {w:"豊かな", r:"ゆたかな", m:"豐富、充滿"},
@@ -372,7 +424,7 @@ const rawData = [
     {w:"梅雨", r:"つゆ", m:"梅雨"},
     {w:"好む", r:"このむ", m:"喜歡"},
     {w:"掘る", r:"ほる", m:"挖掘"},
-    {w:"僅が", r:"わずか", m:"僅僅、差一點"}, // Corrected Kanji from 僅が to 僅か usually, but handling user input
+    {w:"僅が", r:"わずか", m:"僅僅、差一點"},
     {w:"止む", r:"やむ", m:"停止"},
     {w:"上機嫌な", r:"じょうきげんな", m:"心情愉悅的"},
     {w:"寄せる", r:"よせる", m:"靠近"},
@@ -395,15 +447,51 @@ const rawData = [
     {w:"麓", r:"ふもと", m:"山腳下"}
 ];
 
-// Correct typo in data for "shocchuu" if "shokkachou" was user error,
-// but respecting user input for keys, I'll stick to correct Japanese readings where obvious.
-
 let currentQueue = [];
 let currentQuestion = null;
 let selectedOptions = [];
 let isAnswered = false;
 let sessionTotal = 20;
 let answeredCount = 0;
+let masteredWords = new Set(); // Stores words that have been answered correctly
+
+// LocalStorage Key
+const LS_KEY = 'jlpt_n3_mastered';
+
+// Initialize on Load
+window.onload = function() {
+    // Load mastered words from LocalStorage
+    const saved = localStorage.getItem(LS_KEY);
+    if (saved) {
+        masteredWords = new Set(JSON.parse(saved));
+    }
+    
+    updateDashboard();
+};
+
+function updateDashboard() {
+    const totalWords = rawData.length;
+    const masteredCount = masteredWords.size;
+    const percentage = (masteredCount / totalWords) * 100;
+
+    document.getElementById('total-words-display').innerText = totalWords;
+    document.getElementById('mastered-words-display').innerText = masteredCount;
+    document.getElementById('mastery-progress-bar').style.width = percentage + "%";
+}
+
+function startSession() {
+    // Hide start, show quiz
+    document.getElementById('start-screen').style.display = 'none';
+    document.getElementById('quiz-screen').style.display = 'block';
+    
+    // Select 20 random words
+    let shuffledAll = shuffle([...rawData]);
+    currentQueue = shuffledAll.slice(0, sessionTotal);
+    answeredCount = 0;
+    
+    updateSessionStats();
+    loadNextQuestion();
+}
 
 // Helper: Shuffle array
 function shuffle(array) {
@@ -433,20 +521,15 @@ function generateFakeReadings(correct, count) {
     
     while(fakes.size < count && maxAttempts > 0) {
         let fake = correct.split('');
-        // Randomly modify 1 or 2 characters
         let modCount = Math.random() > 0.7 ? 2 : 1;
         
         for(let m=0; m<modCount; m++) {
             let idx = Math.floor(Math.random() * fake.length);
             let char = fake[idx];
-            
-            // Try to find a specific paired modification
             let possibleMods = modifications.filter(m => m.from === char);
             if (possibleMods.length > 0) {
                 fake[idx] = possibleMods[Math.floor(Math.random() * possibleMods.length)].to;
             } else {
-                // Fallback: Random hiragana if no pair found (rare but keeps loop safe)
-                // Just keeping original to prevent total gibberish, or minor change:
                 if (char === 'い') fake[idx] = 'え';
                 else if (char === 'え') fake[idx] = 'い';
             }
@@ -459,7 +542,6 @@ function generateFakeReadings(correct, count) {
         maxAttempts--;
     }
     
-    // Fill remaining with random words from list if generation fails
     while(fakes.size < count) {
         let randomW = rawData[Math.floor(Math.random() * rawData.length)].r;
         if(randomW !== correct) fakes.add(randomW);
@@ -468,78 +550,45 @@ function generateFakeReadings(correct, count) {
     return Array.from(fakes);
 }
 
-function initGame() {
-    // Select 20 random words
-    let shuffledAll = shuffle([...rawData]);
-    currentQueue = shuffledAll.slice(0, sessionTotal);
-    answeredCount = 0;
-    
-    document.getElementById('result-screen').style.display = 'none';
-    document.getElementById('quiz-screen').style.display = 'block';
-    
-    updateStats();
-    loadNextQuestion();
-}
-
-function updateStats() {
-    document.getElementById('progress-text').innerText = `進度: ${answeredCount} / ${sessionTotal}`;
+function updateSessionStats() {
+    document.getElementById('progress-text').innerText = `本回進度: ${answeredCount} / ${sessionTotal}`;
     document.getElementById('remaining-text').innerText = `剩餘隊列: ${currentQueue.length}`;
 }
 
 function loadNextQuestion() {
     if (currentQueue.length === 0) {
-        document.getElementById('quiz-screen').style.display = 'none';
-        document.getElementById('result-screen').style.display = 'block';
+        finishSession();
         return;
     }
 
-    currentQuestion = currentQueue[0]; // Peek
+    currentQuestion = currentQueue[0];
     selectedOptions = [];
     isAnswered = false;
     document.getElementById('feedback-msg').innerText = '';
     document.getElementById('submit-btn').disabled = false;
     document.getElementById('submit-btn').innerText = "送出答案";
 
-    // Set UI
     document.getElementById('question-kanji').innerText = currentQuestion.w;
     
-    // Generate Options
     let options = [];
     
-    // 1. Readings
+    // Readings
     let readingOptions = [];
     readingOptions.push({type: 'read', txt: currentQuestion.r, isCorrect: true});
-    
-    // Get traps
-    let trapsR = [];
-    if (currentQuestion.tr) {
-        trapsR = [...currentQuestion.tr];
-    }
-    
-    // Fill remaining traps automatically
-    let neededR = 4 - 1 - trapsR.length;
+    let trapsR = currentQuestion.tr ? [...currentQuestion.tr] : [];
+    let neededR = 3 - trapsR.length;
     if (neededR > 0) {
-        let autoTraps = generateFakeReadings(currentQuestion.r, neededR + 2); // gen extra
+        let autoTraps = generateFakeReadings(currentQuestion.r, neededR + 2);
         for (let t of autoTraps) {
             if (trapsR.length < 3) trapsR.push(t);
         }
     }
-    
-    // Add traps to options
     trapsR.slice(0, 3).forEach(t => readingOptions.push({type: 'read', txt: t, isCorrect: false}));
     
-    // 2. Meanings
+    // Meanings
     let meaningOptions = [];
     meaningOptions.push({type: 'mean', txt: currentQuestion.m, isCorrect: true});
-    
-    // Get traps
-    let trapsM = [];
-    if (currentQuestion.tm) {
-        trapsM = [...currentQuestion.tm];
-    }
-    
-    // Fill remaining traps from other words
-    let neededM = 4 - 1 - trapsM.length;
+    let trapsM = currentQuestion.tm ? [...currentQuestion.tm] : [];
     let safetyCounter = 0;
     while(trapsM.length < 3 && safetyCounter < 100) {
         let rWord = rawData[Math.floor(Math.random() * rawData.length)];
@@ -548,14 +597,11 @@ function loadNextQuestion() {
         }
         safetyCounter++;
     }
-    
     trapsM.slice(0, 3).forEach(t => meaningOptions.push({type: 'mean', txt: t, isCorrect: false}));
     
-    // Combine and Shuffle
     options = [...readingOptions, ...meaningOptions];
     shuffle(options);
     
-    // Render
     const container = document.getElementById('options-container');
     container.innerHTML = '';
     
@@ -574,7 +620,6 @@ function loadNextQuestion() {
 function selectOption(btn, index) {
     if (isAnswered) return;
     
-    // Toggle logic
     if (selectedOptions.includes(index)) {
         selectedOptions = selectedOptions.filter(i => i !== index);
         btn.classList.remove('selected');
@@ -582,9 +627,6 @@ function selectOption(btn, index) {
         if (selectedOptions.length < 2) {
             selectedOptions.push(index);
             btn.classList.add('selected');
-        } else {
-            // Usually replace the oldest, or just block? Let's block.
-            // Or replace first one? Let's just do nothing, user must deselect.
         }
     }
 }
@@ -605,12 +647,10 @@ function submitAnswer() {
     let correctCount = 0;
     let typeCheck = {read: 0, mean: 0};
 
-    // Check answers
     selectedOptions.forEach(idx => {
         const btn = btns[idx];
         const isCorrect = btn.dataset.isCorrect === 'true';
         const type = btn.dataset.type;
-        
         typeCheck[type]++;
         
         if (isCorrect) {
@@ -621,37 +661,49 @@ function submitAnswer() {
         }
     });
 
-    // Reveal missed correct answers
     btns.forEach(btn => {
         if (btn.dataset.isCorrect === 'true' && !btn.classList.contains('correct')) {
-            btn.classList.add('correct'); // Show what was right
-            btn.style.border = "2px dashed #27ae60"; // Distinguish missed
+            btn.classList.add('correct');
+            btn.style.border = "2px dashed #27ae60";
         }
     });
 
     const feedback = document.getElementById('feedback-msg');
     const submitBtn = document.getElementById('submit-btn');
 
-    // Strict validation: Must pick 1 correct Reading AND 1 correct Meaning
     if (correctCount === 2 && typeCheck.read === 1 && typeCheck.mean === 1) {
         feedback.innerText = "正解！";
         feedback.className = "feedback success";
+        
+        // Save to mastery
+        if (!masteredWords.has(currentQuestion.w)) {
+            masteredWords.add(currentQuestion.w);
+            localStorage.setItem(LS_KEY, JSON.stringify(Array.from(masteredWords)));
+        }
+
         answeredCount++;
-        currentQueue.shift(); // Remove from queue
+        currentQueue.shift();
     } else {
         feedback.innerText = `答錯了。正確答案：${currentQuestion.r} / ${currentQuestion.m}`;
         feedback.className = "feedback error";
-        // Move current question to end of queue
         let wrongQ = currentQueue.shift();
         currentQueue.push(wrongQ);
     }
     
-    updateStats();
+    updateSessionStats();
     submitBtn.innerText = "下一題";
 }
 
-// Start
-initGame();
+function finishSession() {
+    document.getElementById('quiz-screen').style.display = 'none';
+    document.getElementById('result-screen').style.display = 'block';
+    
+    // Update dashboard stats behind the scenes so they are ready if user goes back?
+    // Actually reload button is easiest.
+    
+    // Small summary
+    document.getElementById('session-summary').innerText = `本次練習共 ${sessionTotal} 題。目前總熟練度：${masteredWords.size} / ${rawData.length}`;
+}
 
 </script>
 </body>
