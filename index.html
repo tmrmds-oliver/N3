@@ -1,710 +1,575 @@
-<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JLPT N3 地獄特訓 - 首頁與測驗</title>
-    <style>
-        :root {
-            --primary: #2c3e50;
-            --accent: #e74c3c;
-            --success: #27ae60;
-            --bg: #f5f6fa;
-            --card: #ffffff;
-            --info: #3498db;
-        }
+<script type="module">
+    // ----------------------------------------------------
+    // 1. Supabase 設定
+    // ----------------------------------------------------
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
 
-        body {
-            font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
-            background-color: var(--bg);
-            color: var(--primary);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            padding: 20px;
-        }
+    // ★★★ 請替換成你自己的 Supabase 網址與 Key ★★★
+    const SUPABASE_URL = 'https://sfipbrejajiysspwntkt.supabase.co'
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmaXBicmVqYWppeXNzcHdudGt0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUwMTQxMDEsImV4cCI6MjA4MDU5MDEwMX0.xn6DGKgdd61CIHnxx6TaDjqLrutTGSwHmcAV2V-_LOQ'
 
-        .container {
-            max-width: 800px;
-            width: 100%;
-            background: var(--card);
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            padding: 30px;
-            text-align: center;
-            display: none; /* Hidden by default, JS toggles this */
-        }
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
-        /* Show start screen by default via JS, but handle FOUC */
-        #start-screen { display: block; }
+    // ----------------------------------------------------
+    // 2. 變數與資料
+    // ----------------------------------------------------
+    let currentUser = null;
+    let sessionTotal = 20;
+    let answeredCount = 0;
+    let masteredWords = new Set();
 
-        h1 { font-size: 1.8rem; margin-bottom: 10px; color: var(--primary); }
-        h2 { font-size: 1.2rem; color: #7f8c8d; margin-bottom: 30px; font-weight: normal; }
-
-        .dashboard-stats {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin-bottom: 40px;
-        }
-
-        .stat-card {
-            background: #ecf0f1;
-            padding: 20px;
-            border-radius: 10px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .stat-number {
-            font-size: 2.5rem;
-            font-weight: bold;
-            color: var(--primary);
-        }
-
-        .stat-label {
-            font-size: 0.9rem;
-            color: #7f8c8d;
-            margin-top: 5px;
-        }
-
-        .stat-card.highlight .stat-number { color: var(--success); }
-        .stat-card.total .stat-number { color: var(--info); }
-
-        .progress-bar-container {
-            width: 100%;
-            height: 10px;
-            background-color: #ecf0f1;
-            border-radius: 5px;
-            margin-top: 10px;
-            overflow: hidden;
-        }
-
-        .progress-bar {
-            height: 100%;
-            background-color: var(--success);
-            width: 0%;
-            transition: width 0.5s ease;
-        }
-
-        .stats {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 20px;
-            font-size: 0.9rem;
-            color: #7f8c8d;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 10px;
-        }
-
-        .question-box { margin: 30px 0; }
-
-        .kanji-display {
-            font-size: 3.5rem;
-            font-weight: bold;
-            margin-bottom: 20px;
-            color: #2c3e50;
-        }
-
-        .instruction {
-            color: #e67e22;
-            font-size: 0.9rem;
-            margin-bottom: 20px;
-        }
-
-        .options-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-            margin-bottom: 25px;
-        }
-
-        @media (min-width: 600px) {
-            .options-grid { grid-template-columns: repeat(4, 1fr); }
-        }
-
-        .option-btn {
-            background: white;
-            border: 2px solid #bdc3c7;
-            border-radius: 8px;
-            padding: 15px 5px;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 60px;
-            user-select: none;
-        }
-
-        .option-btn:hover { border-color: var(--primary); background-color: #ecf0f1; }
-        .option-btn.selected { background-color: var(--primary); color: white; border-color: var(--primary); }
-        .option-btn.wrong { background-color: #ffdad7; border-color: var(--accent); color: var(--accent); }
-        .option-btn.correct { background-color: #d5f5e3; border-color: var(--success); color: var(--success); }
-
-        .action-btn {
-            background-color: var(--primary);
-            color: white;
-            border: none;
-            padding: 15px 50px;
-            font-size: 1.2rem;
-            border-radius: 30px;
-            cursor: pointer;
-            transition: transform 0.1s, background-color 0.2s;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-
-        .action-btn:hover { background-color: #34495e; }
-        .action-btn:active { transform: scale(0.98); }
-        .action-btn:disabled { background-color: #bdc3c7; cursor: not-allowed; }
-        
-        .start-btn {
-            background-color: var(--accent); 
-            font-weight: bold;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.4); }
-            70% { box-shadow: 0 0 0 10px rgba(231, 76, 60, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); }
-        }
-
-        .feedback { margin-top: 20px; min-height: 24px; font-weight: bold; }
-        .feedback.error { color: var(--accent); }
-        .feedback.success { color: var(--success); }
-    </style>
-</head>
-<body>
-
-<div class="container" id="start-screen">
-    <h1>JLPT N3 單字地獄特訓</h1>
-    <h2>準備好面對容易混淆的讀音與陷阱了嗎？</h2>
-
-    <div class="dashboard-stats">
-        <div class="stat-card total">
-            <div class="stat-number" id="total-words-display">0</div>
-            <div class="stat-label">總題庫單字數</div>
-        </div>
-        <div class="stat-card highlight">
-            <div class="stat-number" id="mastered-words-display">0</div>
-            <div class="stat-label">歷史累積熟練數</div>
-            <div class="progress-bar-container">
-                <div class="progress-bar" id="mastery-progress-bar"></div>
-            </div>
-        </div>
-    </div>
-
-    <p style="margin-bottom: 30px; line-height: 1.6;">
-        規則：每回合 <strong>20</strong> 題。<br>
-        必須同時選對「拼音」與「中文意思」才算過關。<br>
-        答錯的題目會被退回隊列，直到您學會為止。
-    </p>
-
-    <button class="action-btn start-btn" onclick="startSession()">開始挑戰</button>
-</div>
-
-<div class="container" id="quiz-screen">
-    <div class="stats">
-        <span id="progress-text">本回進度: 0 / 20</span>
-        <span id="remaining-text">剩餘隊列: 20</span>
-    </div>
-
-    <div class="question-box">
-        <div class="kanji-display" id="question-kanji"></div>
-        <div class="instruction">請選出 1 個正確拼音 + 1 個正確中文意思</div>
-    </div>
-
-    <div class="options-grid" id="options-container">
-        </div>
-
-    <div class="feedback" id="feedback-msg"></div>
-
-    <button class="action-btn" id="submit-btn" onclick="submitAnswer()">送出答案</button>
-</div>
-
-<div class="container" id="result-screen">
-    <div class="kanji-display">特訓結束</div>
-    <p>恭喜你完成了一輪 20 題的地獄特訓。</p>
-    <p id="session-summary"></p>
-    <button class="action-btn" onclick="location.reload()">返回首頁</button>
-</div>
-
-<script>
-/**
- * Data Structure:
- * w: Word (Kanji)
- * r: Reading (Hiragana - Correct Answer)
- * m: Meaning (Chinese - Correct Answer)
- * tr: Trap Readings (Optional specific traps)
- * tm: Trap Meanings (Optional specific traps)
- */
-const rawData = [
-    {w:"小遣い", r:"こづかい", m:"零用錢", tm:["零錢"]},
-    {w:"小銭", r:"こぜに", m:"零錢", tm:["零用錢"]},
-    {w:"大声", r:"おおごえ", m:"大聲"},
-    {w:"乾く", r:"かわく", m:"口渴、乾的"},
-    {w:"居眠り", r:"いねむり", m:"打瞌睡"},
-    {w:"得る", r:"える", m:"獲得"},
-    {w:"通り掛かる", r:"とおりかかる", m:"剛好經過"},
-    {w:"真っ青な", r:"まっさおな", m:"蔚藍、臉色蒼白的"},
-    {w:"夢中な", r:"むちゅうな", m:"沈迷"},
-    {w:"とれる", r:"とれる", m:"消失"},
-    {w:"嗅ぐ", r:"かぐ", m:"聞、嗅"},
-    {w:"おかず", r:"おかず", m:"配菜"},
-    {w:"貧しい", r:"まずしい", m:"貧困"},
-    {w:"頷く", r:"うなずく", m:"點頭"},
-    {w:"各々", r:"おのおの", m:"各自、每個人"},
-    {w:"お祝い", r:"おいわい", m:"慶祝"},
-    {w:"生える", r:"はえる", m:"毛、牙齒、指甲長出來"},
-    {w:"怠ける", r:"なまける", m:"懶惰"},
-    {w:"描く", r:"えがく", m:"描寫"},
-    {w:"外れる", r:"はずれる", m:"偏離、事與願違的"},
-    {w:"作法", r:"さほう", m:"作法、禮法"},
-    {w:"応募", r:"おうぼ", m:"應徵、報名"},
-    {w:"叩く", r:"たたく", m:"打、捶"},
-    {w:"すれ違う", r:"すれちがう", m:"擦肩而過"},
-    {w:"注ぐ", r:"そそぐ", m:"注入"},
-    {w:"火傷", r:"やけど", m:"燙傷"},
-    {w:"卽ち", r:"すなわち", m:"也就是說"},
-    {w:"経由", r:"けいゆ", m:"經由"},
-    {w:"下車", r:"げしゃ", m:"下車"},
-    {w:"構う", r:"かまう", m:"在意"},
-    {w:"流行る", r:"はやる", m:"流行"},
-    {w:"囲む", r:"かこむ", m:"包圍"},
-    {w:"写す", r:"うつす", m:"抄、拍照"},
-    {w:"利口な", r:"りこうな", m:"機靈"},
-    {w:"顔色", r:"かおいろ", m:"氣色"},
-    {w:"控える", r:"ひかえる", m:"控制"},
-    {w:"省く", r:"はぶく", m:"減去"},
-    {w:"瞼", r:"まぶた", m:"眼皮"},
-    {w:"眉毛", r:"まゆげ", m:"眉毛"},
-    {w:"しっょちょう", r:"しっょちょう", m:"常常"},
-    {w:"ばらばらな", r:"ばらばらな", m:"凌亂"},
-    {w:"削除", r:"さくじょ", m:"刪除"},
-    {w:"ぬるい", r:"ぬるい", m:"溫和"},
-    {w:"箇所", r:"かしょ", m:"地方"},
-    {w:"塀", r:"へい", m:"圍牆"},
-    {w:"轢く", r:"ひく", m:"輾壓"},
-    {w:"肩書き", r:"かたがき", m:"頭銜"},
-    {w:"激しい", r:"はげしい", m:"激烈的"},
-    {w:"捻る", r:"ひねる", m:"扭轉"},
-    {w:"改める", r:"あらためる", m:"修正"},
-    {w:"ひっくり返す", r:"ひっくりかえす", m:"推翻", tm:["翻倒"]},
-    {w:"ひっくり返る", r:"ひっくりかえる", m:"翻倒", tm:["推翻"]},
-    {w:"ぐらぐらと", r:"ぐらぐらと", m:"搖晃"},
-    {w:"きちんと", r:"きちんと", m:"整齊的"},
-    {w:"大人しい", r:"おとなしい", m:"溫馴的", tm:["成熟的"]},
-    {w:"納める", r:"おさめる", m:"繳納", tm:["收納"]},
-    {w:"吠える", r:"ほえる", m:"吼叫"},
-    {w:"収める", r:"おさめる", m:"收藏"},
-    {w:"干す", r:"ほす", m:"曬乾"},
-    {w:"額", r:"ひたい", m:"額頭"},
-    {w:"含む", r:"ふくむ", m:"包含"},
-    {w:"一体", r:"いったい", m:"究竟", tr:["いっだい","いたい","いだい"]},
-    {w:"防ぐ", r:"ふせぐ", m:"預防"},
-    {w:"握る", r:"にぎる", m:"握住"},
-    {w:"勢い", r:"いきおい", m:"氣勢"},
-    {w:"思い付く", r:"おもいつく", m:"想到"},
-    {w:"思いやる", r:"おもいやる", m:"體諒"},
-    {w:"意地悪な", r:"いじわるな", m:"刁難"},
-    {w:"掛かる", r:"かかる", m:"花費", tm:["掛上"]},
-    {w:"配る", r:"くばる", m:"分配"},
-    {w:"刻む", r:"きざむ", m:"銘記"},
-    {w:"溺れる", r:"おぼれる", m:"溺水"},
-    {w:"折る", r:"おる", m:"折斷"},
-    {w:"ビニール", r:"びにーる", m:"塑膠"},
-    {w:"煮る", r:"にる", m:"煮、燉"},
-    {w:"誤り", r:"あやまり", m:"錯誤"},
-    {w:"イライラ", r:"いらいら", m:"焦躁"},
-    {w:"いとこ", r:"いとこ", m:"堂、表兄弟姐妹"},
-    {w:"畳む", r:"たたむ", m:"堆疊"},
-    {w:"至る", r:"いたる", m:"到"},
-    {w:"踏む", r:"ふむ", m:"踩"},
-    {w:"苦痛", r:"くつう", m:"痛苦", tr:["いたみ"]},
-    {w:"移る", r:"うつる", m:"移動、搬遷"},
-    {w:"塗る", r:"ぬる", m:"塗抹"},
-    {w:"じっくり", r:"じっくり", m:"仔細的"},
-    {w:"従って", r:"したがって", m:"因此"},
-    {w:"うがい", r:"うがい", m:"漱口", tm:["懷疑"]},
-    {w:"遣り取り", r:"やりとり", m:"對話、交談"},
-    {w:"伸ばす", r:"のばす", m:"拉直", tm:["伸長"]},
-    {w:"伸びる", r:"のびる", m:"伸長", tm:["拉直"]},
-    {w:"食う", r:"くう", m:"吃", tr:["たべう"]},
-    {w:"抱える", r:"かかえる", m:"承擔", tm:["抱著"]},
-    {w:"限る", r:"かぎる", m:"限制"},
-    {w:"微笑む", r:"ほほえむ", m:"微笑"},
-    {w:"聞き直す", r:"ききなおす", m:"再次詢問"},
-    {w:"欠伸", r:"あくび", m:"打哈欠"},
-    {w:"一昨日", r:"おととい", m:"前天"},
-    {w:"経る", r:"へる", m:"經過"},
-    {w:"図々しい", r:"ずうずうしい", m:"厚顏無恥的"},
-    {w:"振り込む", r:"ふりこむ", m:"轉帳"},
-    {w:"手間", r:"てま", m:"勞力和時間、功夫"},
-    {w:"発つ", r:"たつ", m:"離開", tm:["發射"], tr:["はつ"]},
-    {w:"生憎", r:"あいにく", m:"不巧", tm:["憎恨"], tr:["あいにくい","いきにく","なまにく"]},
-    {w:"絞る", r:"しぼる", m:"擰乾"},
-    {w:"明々後日", r:"しあさって", m:"大後天"},
-    {w:"仕舞う", r:"しまう", m:"收起來、整理", tm:["跳舞"]},
-    {w:"見舞い", r:"みまい", m:"探望病人"},
-    {w:"両替", r:"りょうがえ", m:"兑幣", tr:["りょうたい"]},
-    {w:"生む", r:"うむ", m:"產生"},
-    {w:"纏める", r:"まとめる", m:"集中、彙總"},
-    {w:"腹痛", r:"ふくつう", m:"肚子痛"},
-    {w:"測る", r:"はかる", m:"測量"},
-    {w:"絶えず", r:"たえず", m:"不斷地"},
-    {w:"裾", r:"すそ", m:"下端"},
-    {w:"思わず", r:"おもわず", m:"不由得"},
-    {w:"遠回り", r:"とおまわり", m:"繞道"},
-    {w:"観る", r:"みる", m:"診察、看病"},
-    {w:"問い", r:"とい", m:"問題"},
-    {w:"訴える", r:"うったえる", m:"起訴"},
-    {w:"記入", r:"きにゅう", m:"填寫", tr:["きにゅうく"]},
-    {w:"緩い", r:"ゆるい", m:"平緩"},
-    {w:"招く", r:"まねく", m:"邀請"},
-    {w:"真似る", r:"まねる", m:"模仿"},
-    {w:"朗らかな", r:"ほがらかな", m:"開朗"},
-    {w:"可愛がる", r:"かわいがる", m:"寵愛"},
-    {w:"袖", r:"そで", m:"袖子"},
-    {w:"掛ける", r:"かける", m:"坐"},
-    {w:"剃る", r:"そる", m:"刮"},
-    {w:"揃う", r:"そろう", m:"聚集"},
-    {w:"豊かな", r:"ゆたかな", m:"豐富、充滿"},
-    {w:"溜め息", r:"ためいき", m:"嘆氣"},
-    {w:"濡れる", r:"ぬれる", m:"淋濕"},
-    {w:"ほうき", r:"ほうき", m:"掃把"},
-    {w:"突き当たり", r:"つきあたり", m:"盡頭"},
-    {w:"瀬戸物", r:"せともの", m:"陶瓷"},
-    {w:"捲る", r:"めくる", m:"翻"},
-    {w:"分ける", r:"わける", m:"分類"},
-    {w:"鈍い", r:"にぶい", m:"遲鈍"},
-    {w:"出前", r:"でまえ", m:"外送"},
-    {w:"纏まる", r:"まとまる", m:"有條理的", tm:["纏在一起的"]},
-    {w:"賑やかな", r:"にぎやかな", m:"熱鬧的"},
-    {w:"臍", r:"へそ", m:"肚臍"},
-    {w:"満ちる", r:"みちる", m:"充滿"},
-    {w:"生意気な", r:"なまいきな", m:"自大傲慢", tm:["生意很好"]},
-    {w:"たちまち", r:"たちまち", m:"轉瞬間"},
-    {w:"騒々しい", r:"そうぞうしい", m:"吵鬧的"},
-    {w:"不況", r:"ふきょう", m:"不景氣"},
-    {w:"直ちに", r:"ただちに", m:"立刻"},
-    {w:"要するに", r:"ようするに", m:"總之"},
-    {w:"用いる", r:"もちいる", m:"使用"},
-    {w:"分かれる", r:"わかれる", m:"劃分、分成"},
-    {w:"端", r:"はし", m:"邊緣"},
-    {w:"所々", r:"ところどころ", m:"有些地方"},
-    {w:"鋭い", r:"するどい", m:"銳利的"},
-    {w:"経つ", r:"たつ", m:"經過"},
-    {w:"涎", r:"よだれ", m:"口水"},
-    {w:"唸る", r:"うなる", m:"吼叫"},
-    {w:"効く", r:"きく", m:"有效"},
-    {w:"加える", r:"くわえる", m:"加上"},
-    {w:"基づく", r:"もとづく", m:"基於"},
-    {w:"下る", r:"くだる", m:"下去"},
-    {w:"親指", r:"おやゆび", m:"拇指", tr:["きにゅうく"]},
-    {w:"出来上がる", r:"できあがる", m:"做好"},
-    {w:"既に", r:"すでに", m:"已經"},
-    {w:"積もる", r:"つもる", m:"堆積"},
-    {w:"物差し", r:"ものさし", m:"尺"},
-    {w:"にわか雨", r:"にわかあめ", m:"陣雨"},
-    {w:"やかん", r:"やかん", m:"水壺"},
-    {w:"元日", r:"がんじつ", m:"初一"},
-    {w:"気の毒な", r:"きのどくな", m:"感到可憐、悲慘"},
-    {w:"空き", r:"あき", m:"空位"},
-    {w:"凍る", r:"こおる", m:"結冰"},
-    {w:"くたくたな", r:"くたくたな", m:"筋疲力盡"},
-    {w:"大して", r:"たいして", m:"並不怎麼樣⋯⋯後面接否定"},
-    {w:"腰掛ける", r:"こしかける", m:"坐下"},
-    {w:"工夫", r:"くふう", m:"鑽研、設法", tr:["こふう"]},
-    {w:"異なる", r:"ことなる", m:"不一樣"},
-    {w:"梅雨", r:"つゆ", m:"梅雨"},
-    {w:"好む", r:"このむ", m:"喜歡"},
-    {w:"掘る", r:"ほる", m:"挖掘"},
-    {w:"僅が", r:"わずか", m:"僅僅、差一點"},
-    {w:"止む", r:"やむ", m:"停止"},
-    {w:"上機嫌な", r:"じょうきげんな", m:"心情愉悅的"},
-    {w:"寄せる", r:"よせる", m:"靠近"},
-    {w:"返って", r:"かえって", m:"反而"},
-    {w:"巡る", r:"めぐる", m:"巡迴"},
-    {w:"割り込む", r:"わりこむ", m:"插隊者"},
-    {w:"磨く", r:"みがく", m:"擦亮"},
-    {w:"縮む", r:"ちぢむ", m:"縮小"},
-    {w:"盛んな", r:"さかんな", m:"強盛的"},
-    {w:"親しい", r:"したしい", m:"親密的"},
-    {w:"前以て", r:"まえもって", m:"事前"},
-    {w:"眩暈", r:"めまい", m:"暈眩"},
-    {w:"去る", r:"さる", m:"離開"},
-    {w:"叱る", r:"しかる", m:"斥責"},
-    {w:"ぼんやり", r:"ぼんやり", m:"心不在焉"},
-    {w:"濃い", r:"こい", m:"很濃的"},
-    {w:"包む", r:"つつむ", m:"包覆"},
-    {w:"溢す", r:"こぼす", m:"溢出"},
-    {w:"布", r:"ぬの", m:"布"},
-    {w:"麓", r:"ふもと", m:"山腳下"}
-];
-
-let currentQueue = [];
-let currentQuestion = null;
-let selectedOptions = [];
-let isAnswered = false;
-let sessionTotal = 20;
-let answeredCount = 0;
-let masteredWords = new Set(); // Stores words that have been answered correctly
-
-// LocalStorage Key
-const LS_KEY = 'jlpt_n3_mastered';
-
-// Initialize on Load
-window.onload = function() {
-    // Load mastered words from LocalStorage
-    const saved = localStorage.getItem(LS_KEY);
-    if (saved) {
-        masteredWords = new Set(JSON.parse(saved));
-    }
-    
-    updateDashboard();
-};
-
-function updateDashboard() {
-    const totalWords = rawData.length;
-    const masteredCount = masteredWords.size;
-    const percentage = (masteredCount / totalWords) * 100;
-
-    document.getElementById('total-words-display').innerText = totalWords;
-    document.getElementById('mastered-words-display').innerText = masteredCount;
-    document.getElementById('mastery-progress-bar').style.width = percentage + "%";
-}
-
-function startSession() {
-    // Hide start, show quiz
-    document.getElementById('start-screen').style.display = 'none';
-    document.getElementById('quiz-screen').style.display = 'block';
-    
-    // Select 20 random words
-    let shuffledAll = shuffle([...rawData]);
-    currentQueue = shuffledAll.slice(0, sessionTotal);
-    answeredCount = 0;
-    
-    updateSessionStats();
-    loadNextQuestion();
-}
-
-// Helper: Shuffle array
-function shuffle(array) {
-    for (let i = array.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [array[i], array[j]] = [array[j], array[i]];
-    }
-    return array;
-}
-
-// Helper: Generate fake readings (JLPT Style)
-function generateFakeReadings(correct, count) {
-    const modifications = [
-        {from: 'あ', to: 'い'}, {from: 'い', to: 'い'}, {from: 'う', to: 'お'}, {from: 'え', to: 'い'}, {from: 'お', to: 'う'},
-        {from: 'か', to: 'が'}, {from: 'が', to: 'か'}, {from: 'き', to: 'ぎ'}, {from: 'ぎ', to: 'き'},
-        {from: 'く', to: 'ぐ'}, {from: 'ぐ', to: 'く'}, {from: 'け', to: 'げ'}, {from: 'げ', to: 'け'},
-        {from: 'こ', to: 'ご'}, {from: 'ご', to: 'こ'},
-        {from: 'さ', to: 'ざ'}, {from: 'ざ', to: 'さ'}, {from: 'た', to: 'だ'}, {from: 'だ', to: 'た'},
-        {from: 'つ', to: 'っ'}, {from: 'っ', to: 'つ'},
-        {from: 'ゆ', to: 'よ'}, {from: 'よ', to: 'ゆ'},
-        {from: 'び', to: 'ぴ'}, {from: 'ぴ', to: 'び'},
-        {from: 'ん', to: 'う'}, {from: 'う', to: 'ん'}
+    // (保留原本的單字表，這裡只列出範例，請務必保留你完整的 rawData)
+    const rawData = [
+        { w: "小遣い", r: "こづかい", m: "零用錢", tm: ["零錢"] },
+        { w: "小銭", r: "こぜに", m: "零錢", tm: ["零用錢"] },
+        { w: "大声", r: "おおごえ", m: "大聲" },
+        { w: "乾く", r: "かわく", m: "口渴、乾的" },
+        { w: "居眠り", r: "いねむり", m: "打瞌睡" },
+        { w: "得る", r: "える", m: "獲得" },
+        { w: "通り掛かる", r: "とおりかかる", m: "剛好經過" },
+        { w: "真っ青な", r: "まっさおな", m: "蔚藍、臉色蒼白的" },
+        { w: "夢中な", r: "むちゅうな", m: "沈迷" },
+        { w: "とれる", r: "とれる", m: "消失" },
+        { w: "嗅ぐ", r: "かぐ", m: "聞、嗅" },
+        { w: "おかず", r: "おかず", m: "配菜" },
+        { w: "貧しい", r: "まずしい", m: "貧困" },
+        { w: "頷く", r: "うなずく", m: "點頭" },
+        { w: "各々", r: "おのおの", m: "各自、每個人" },
+        { w: "お祝い", r: "おいわい", m: "慶祝" },
+        { w: "生える", r: "はえる", m: "毛、牙齒、指甲長出來" },
+        { w: "怠ける", r: "なまける", m: "懶惰" },
+        { w: "描く", r: "えがく", m: "描寫" },
+        { w: "外れる", r: "はずれる", m: "偏離、事與願違的" },
+        { w: "作法", r: "さほう", m: "作法、禮法" },
+        { w: "応募", r: "おうぼ", m: "應徵、報名" },
+        { w: "叩く", r: "たたく", m: "打、捶" },
+        { w: "すれ違う", r: "すれちがう", m: "擦肩而過" },
+        { w: "注ぐ", r: "そそぐ", m: "注入" },
+        { w: "火傷", r: "やけど", m: "燙傷" },
+        { w: "卽ち", r: "すなわち", m: "也就是說" },
+        { w: "経由", r: "けいゆ", m: "經由" },
+        { w: "下車", r: "げしゃ", m: "下車" },
+        { w: "構う", r: "かまう", m: "在意" },
+        { w: "流行る", r: "はやる", m: "流行" },
+        { w: "囲む", r: "かこむ", m: "包圍" },
+        { w: "写す", r: "うつす", m: "抄、拍照" },
+        { w: "利口な", r: "りこうな", m: "機靈" },
+        { w: "顔色", r: "かおいろ", m: "氣色" },
+        { w: "控える", r: "ひかえる", m: "控制" },
+        { w: "省く", r: "はぶく", m: "減去" },
+        { w: "瞼", r: "まぶた", m: "眼皮" },
+        { w: "眉毛", r: "まゆげ", m: "眉毛" },
+        { w: "しっょちょう", r: "しっょちょう", m: "常常" },
+        { w: "ばらばらな", r: "ばらばらな", m: "凌亂" },
+        { w: "削除", r: "さくじょ", m: "刪除" },
+        { w: "ぬるい", r: "ぬるい", m: "溫和" },
+        { w: "箇所", r: "かしょ", m: "地方" },
+        { w: "塀", r: "へい", m: "圍牆" },
+        { w: "轢く", r: "ひく", m: "輾壓" },
+        { w: "肩書き", r: "かたがき", m: "頭銜" },
+        { w: "激しい", r: "はげしい", m: "激烈的" },
+        { w: "捻る", r: "ひねる", m: "扭轉" },
+        { w: "改める", r: "あらためる", m: "修正" },
+        { w: "ひっくり返す", r: "ひっくりかえす", m: "推翻", tm: ["翻倒"] },
+        { w: "ひっくり返る", r: "ひっくりかえる", m: "翻倒", tm: ["推翻"] },
+        { w: "ぐらぐらと", r: "ぐらぐらと", m: "搖晃" },
+        { w: "きちんと", r: "きちんと", m: "整齊的" },
+        { w: "大人しい", r: "おとなしい", m: "溫馴的", tm: ["成熟的"] },
+        { w: "納める", r: "おさめる", m: "繳納", tm: ["收納"] },
+        { w: "吠える", r: "ほえる", m: "吼叫" },
+        { w: "収める", r: "おさめる", m: "收藏" },
+        { w: "干す", r: "ほす", m: "曬乾" },
+        { w: "額", r: "ひたい", m: "額頭" },
+        { w: "含む", r: "ふくむ", m: "包含" },
+        { w: "一体", r: "いったい", m: "究竟", tr: ["いっだい", "いたい", "いだい"] },
+        { w: "防ぐ", r: "ふせぐ", m: "預防" },
+        { w: "握る", r: "にぎる", m: "握住" },
+        { w: "勢い", r: "いきおい", m: "氣勢" },
+        { w: "思い付く", r: "おもいつく", m: "想到" },
+        { w: "思いやる", r: "おもいやる", m: "體諒" },
+        { w: "意地悪な", r: "いじわるな", m: "刁難" },
+        { w: "掛かる", r: "かかる", m: "花費", tm: ["掛上"] },
+        { w: "配る", r: "くばる", m: "分配" },
+        { w: "刻む", r: "きざむ", m: "銘記" },
+        { w: "溺れる", r: "おぼれる", m: "溺水" },
+        { w: "折る", r: "おる", m: "折斷" },
+        { w: "ビニール", r: "びにーる", m: "塑膠" },
+        { w: "煮る", r: "にる", m: "煮、燉" },
+        { w: "誤り", r: "あやまり", m: "錯誤" },
+        { w: "イライラ", r: "いらいら", m: "焦躁" },
+        { w: "いとこ", r: "いとこ", m: "堂、表兄弟姐妹" },
+        { w: "畳む", r: "たたむ", m: "堆疊" },
+        { w: "至る", r: "いたる", m: "到" },
+        { w: "踏む", r: "ふむ", m: "踩" },
+        { w: "苦痛", r: "くつう", m: "痛苦", tr: ["いたみ"] },
+        { w: "移る", r: "うつる", m: "移動、搬遷" },
+        { w: "塗る", r: "ぬる", m: "塗抹" },
+        { w: "じっくり", r: "じっくり", m: "仔細的" },
+        { w: "従って", r: "したがって", m: "因此" },
+        { w: "うがい", r: "うがい", m: "漱口", tm: ["懷疑"] },
+        { w: "遣り取り", r: "やりとり", m: "對話、交談" },
+        { w: "伸ばす", r: "のばす", m: "拉直", tm: ["伸長"] },
+        { w: "伸びる", r: "のびる", m: "伸長", tm: ["拉直"] },
+        { w: "食う", r: "くう", m: "吃", tr: ["たべう"] },
+        { w: "抱える", r: "かかえる", m: "承擔", tm: ["抱著"] },
+        { w: "限る", r: "かぎる", m: "限制" },
+        { w: "微笑む", r: "ほほえむ", m: "微笑" },
+        { w: "聞き直す", r: "ききなおす", m: "再次詢問" },
+        { w: "欠伸", r: "あくび", m: "打哈欠" },
+        { w: "一昨日", r: "おととい", m: "前天" },
+        { w: "経る", r: "へる", m: "經過" },
+        { w: "図々しい", r: "ずうずうしい", m: "厚顏無恥的" },
+        { w: "振り込む", r: "ふりこむ", m: "轉帳" },
+        { w: "手間", r: "てま", m: "勞力和時間、功夫" },
+        { w: "発つ", r: "たつ", m: "離開", tm: ["發射"], tr: ["はつ"] },
+        { w: "生憎", r: "あいにく", m: "不巧", tm: ["憎恨"], tr: ["あいにくい", "いきにく", "なまにく"] },
+        { w: "絞る", r: "しぼる", m: "擰乾" },
+        { w: "明々後日", r: "しあさって", m: "大後天" },
+        { w: "仕舞う", r: "しまう", m: "收起來、整理", tm: ["跳舞"] },
+        { w: "見舞い", r: "みまい", m: "探望病人" },
+        { w: "両替", r: "りょうがえ", m: "兑幣", tr: ["りょうたい"] },
+        { w: "生む", r: "うむ", m: "產生" },
+        { w: "纏める", r: "まとめる", m: "集中、彙總" },
+        { w: "腹痛", r: "ふくつう", m: "肚子痛" },
+        { w: "測る", r: "はかる", m: "測量" },
+        { w: "絶えず", r: "たえず", m: "不斷地" },
+        { w: "裾", r: "すそ", m: "下端" },
+        { w: "思わず", r: "おもわず", m: "不由得" },
+        { w: "遠回り", r: "とおまわり", m: "繞道" },
+        { w: "観る", r: "みる", m: "診察、看病" },
+        { w: "問い", r: "とい", m: "問題" },
+        { w: "訴える", r: "うったえる", m: "起訴" },
+        { w: "記入", r: "きにゅう", m: "填寫", tr: ["きにゅうく"] },
+        { w: "緩い", r: "ゆるい", m: "平緩" },
+        { w: "招く", r: "まねく", m: "邀請" },
+        { w: "真似る", r: "まねる", m: "模仿" },
+        { w: "朗らかな", r: "ほがらかな", m: "開朗" },
+        { w: "可愛がる", r: "かわいがる", m: "寵愛" },
+        { w: "袖", r: "そで", m: "袖子" },
+        { w: "掛ける", r: "かける", m: "坐" },
+        { w: "剃る", r: "そる", m: "刮" },
+        { w: "揃う", r: "そろう", m: "聚集" },
+        { w: "豊かな", r: "ゆたかな", m: "豐富、充滿" },
+        { w: "溜め息", r: "ためいき", m: "嘆氣" },
+        { w: "濡れる", r: "ぬれる", m: "淋濕" },
+        { w: "ほうき", r: "ほうき", m: "掃把" },
+        { w: "突き当たり", r: "つきあたり", m: "盡頭" },
+        { w: "瀬戸物", r: "せともの", m: "陶瓷" },
+        { w: "捲る", r: "めくる", m: "翻" },
+        { w: "分ける", r: "わける", m: "分類" },
+        { w: "鈍い", r: "にぶい", m: "遲鈍" },
+        { w: "出前", r: "でまえ", m: "外送" },
+        { w: "纏まる", r: "まとまる", m: "有條理的", tm: ["纏在一起的"] },
+        { w: "賑やかな", r: "にぎやかな", m: "熱鬧的" },
+        { w: "臍", r: "へそ", m: "肚臍" },
+        { w: "満ちる", r: "みちる", m: "充滿" },
+        { w: "生意気な", r: "なまいきな", m: "自大傲慢", tm: ["生意很好"] },
+        { w: "たちまち", r: "たちまち", m: "轉瞬間" },
+        { w: "騒々しい", r: "そうぞうしい", m: "吵鬧的" },
+        { w: "不況", r: "ふきょう", m: "不景氣" },
+        { w: "直ちに", r: "ただちに", m: "立刻" },
+        { w: "要するに", r: "ようするに", m: "總之" },
+        { w: "用いる", r: "もちいる", m: "使用" },
+        { w: "分かれる", r: "わかれる", m: "劃分、分成" },
+        { w: "端", r: "はし", m: "邊緣" },
+        { w: "所々", r: "ところどころ", m: "有些地方" },
+        { w: "鋭い", r: "するどい", m: "銳利的" },
+        { w: "経つ", r: "たつ", m: "經過" },
+        { w: "涎", r: "よだれ", m: "口水" },
+        { w: "唸る", r: "うなる", m: "吼叫" },
+        { w: "効く", r: "きく", m: "有效" },
+        { w: "加える", r: "くわえる", m: "加上" },
+        { w: "基づく", r: "もとづく", m: "基於" },
+        { w: "下る", r: "くだる", m: "下去" },
+        { w: "親指", r: "おやゆび", m: "拇指", tr: ["きにゅうく"] },
+        { w: "出来上がる", r: "できあがる", m: "做好" },
+        { w: "既に", r: "すでに", m: "已經" },
+        { w: "積もる", r: "つもる", m: "堆積" },
+        { w: "物差し", r: "ものさし", m: "尺" },
+        { w: "にわか雨", r: "にわかあめ", m: "陣雨" },
+        { w: "やかん", r: "やかん", m: "水壺" },
+        { w: "元日", r: "がんじつ", m: "初一" },
+        { w: "気の毒な", r: "きのどくな", m: "感到可憐、悲慘" },
+        { w: "空き", r: "あき", m: "空位" },
+        { w: "凍る", r: "こおる", m: "結冰" },
+        { w: "くたくたな", r: "くたくたな", m: "筋疲力盡" },
+        { w: "大して", r: "たいして", m: "並不怎麼樣⋯⋯後面接否定" },
+        { w: "腰掛ける", r: "こしかける", m: "坐下" },
+        { w: "工夫", r: "くふう", m: "鑽研、設法", tr: ["こふう"] },
+        { w: "異なる", r: "ことなる", m: "不一樣" },
+        { w: "梅雨", r: "つゆ", m: "梅雨" },
+        { w: "好む", r: "このむ", m: "喜歡" },
+        { w: "掘る", r: "ほる", m: "挖掘" },
+        { w: "僅が", r: "わずか", m: "僅僅、差一點" },
+        { w: "止む", r: "やむ", m: "停止" },
+        { w: "上機嫌な", r: "じょうきげんな", m: "心情愉悅的" },
+        { w: "寄せる", r: "よせる", m: "靠近" },
+        { w: "返って", r: "かえって", m: "反而" },
+        { w: "巡る", r: "めぐる", m: "巡迴" },
+        { w: "割り込む", r: "わりこむ", m: "插隊者" },
+        { w: "磨く", r: "みがく", m: "擦亮" },
+        { w: "縮む", r: "ちぢむ", m: "縮小" },
+        { w: "盛んな", r: "さかんな", m: "強盛的" },
+        { w: "親しい", r: "したしい", m: "親密的" },
+        { w: "前以て", r: "まえもって", m: "事前" },
+        { w: "眩暈", r: "めまい", m: "暈眩" },
+        { w: "去る", r: "さる", m: "離開" },
+        { w: "叱る", r: "しかる", m: "斥責" },
+        { w: "ぼんやり", r: "ぼんやり", m: "心不在焉" },
+        { w: "濃い", r: "こい", m: "很濃的" },
+        { w: "包む", r: "つつむ", m: "包覆" },
+        { w: "溢す", r: "こぼす", m: "溢出" },
+        { w: "布", r: "ぬの", m: "布" },
+        { w: "麓", r: "ふもと", m: "山腳下" }
     ];
-    
-    let fakes = new Set();
-    let maxAttempts = 50;
-    
-    while(fakes.size < count && maxAttempts > 0) {
-        let fake = correct.split('');
-        let modCount = Math.random() > 0.7 ? 2 : 1;
-        
-        for(let m=0; m<modCount; m++) {
-            let idx = Math.floor(Math.random() * fake.length);
-            let char = fake[idx];
-            let possibleMods = modifications.filter(m => m.from === char);
-            if (possibleMods.length > 0) {
-                fake[idx] = possibleMods[Math.floor(Math.random() * possibleMods.length)].to;
+
+    let currentQueue = [];
+    let currentQuestion = null;
+    let selectedOptions = [];
+    let isAnswered = false;
+
+    // ----------------------------------------------------
+    // 3. 頁面載入與登入檢查
+    // ----------------------------------------------------
+    window.onload = async function () {
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (session) {
+            handleLoginSuccess(session.user);
+        } else {
+            renderLoginUI();
+            updateDashboard(); // 沒登入也可以看儀表板(雖然是0)
+        }
+
+        // 監聽登入狀態變化
+        supabase.auth.onAuthStateChange((_event, session) => {
+            if (session) {
+                handleLoginSuccess(session.user);
             } else {
-                if (char === 'い') fake[idx] = 'え';
-                else if (char === 'え') fake[idx] = 'い';
+                currentUser = null;
+                masteredWords.clear();
+                renderLoginUI();
+                updateDashboard();
+            }
+        });
+    };
+
+    function renderLoginUI() {
+        const authContainer = document.getElementById('auth-container');
+        if (!authContainer) return; // 避免 HTML 還沒加
+        authContainer.innerHTML = `
+            <div style="margin-bottom: 20px; padding: 15px; background: #ecf0f1; border-radius: 8px;">
+                <h3 style="margin-top:0; font-size:1rem; color:#2c3e50;">雲端同步登入</h3>
+                <input type="email" id="email" placeholder="Email" style="padding:8px; margin-right:5px; border:1px solid #ccc; border-radius:4px;">
+                <input type="password" id="password" placeholder="密碼" style="padding:8px; margin-right:5px; border:1px solid #ccc; border-radius:4px;">
+                <br><br>
+                <button class="action-btn" onclick="signUp()" style="font-size:0.9rem; padding:8px 15px; background:#27ae60; margin-right:10px;">註冊</button>
+                <button class="action-btn" onclick="signIn()" style="font-size:0.9rem; padding:8px 15px; background:#3498db;">登入</button>
+            </div>
+        `;
+    }
+
+    async function handleLoginSuccess(user) {
+        currentUser = user;
+        const authContainer = document.getElementById('auth-container');
+        if (authContainer) {
+            authContainer.innerHTML = `
+                <div style="margin-bottom: 20px;">
+                    <p style="color:#27ae60; font-weight:bold;">已登入：${user.email} <br> <span style="font-size:0.8rem; color:#7f8c8d;">進度將自動同步至雲端</span></p>
+                    <button class="action-btn" onclick="logout()" style="background:#7f8c8d; padding:5px 15px; font-size:0.9rem;">登出</button>
+                </div>
+            `;
+        }
+        await syncDataFromCloud();
+        updateDashboard();
+    }
+
+    // ----------------------------------------------------
+    // 4. 認證功能 (綁定到 Window)
+    // ----------------------------------------------------
+    window.signUp = async function () {
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        if (!email || !password) return alert("請輸入 Email 和密碼");
+
+        const { data, error } = await supabase.auth.signUp({ email, password });
+        if (error) alert("註冊失敗: " + error.message);
+        else alert("註冊成功！如果沒自動登入，請檢查信箱或直接點登入。");
+    }
+
+    window.signIn = async function () {
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        if (!email || !password) return alert("請輸入 Email 和密碼");
+
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) alert("登入失敗: " + error.message);
+    }
+
+    window.logout = async function () {
+        await supabase.auth.signOut();
+        location.reload();
+    }
+
+    // ----------------------------------------------------
+    // 5. 資料庫同步 (核心)
+    // ----------------------------------------------------
+    async function syncDataFromCloud() {
+        if (!currentUser) return;
+
+        // 讀取 users 自己的資料
+        const { data, error } = await supabase
+            .from('study_progress')
+            .select('word'); // 自動套用你設定的 RLS：只抓得到 user_id = 自己 的
+
+        if (error) {
+            console.error('下載進度失敗:', error);
+            return;
+        }
+
+        if (data) {
+            data.forEach(row => masteredWords.add(row.word));
+            console.log(`同步完成，共 ${masteredWords.size} 個字`);
+        }
+    }
+
+    async function saveProgressToCloud(word) {
+        if (!currentUser) return;
+
+        const { error } = await supabase
+            .from('study_progress')
+            .insert({ user_id: currentUser.id, word: word });
+
+        if (error) {
+            // 如果是重複主鍵 (已經存過了) 可以忽略
+            if (error.code !== '23505') console.error('存檔失敗:', error);
+        }
+    }
+
+    // ----------------------------------------------------
+    // 6. 遊戲邏輯 (部分微調)
+    // ----------------------------------------------------
+
+    // 為了讓按鈕能呼叫，全部掛載到 window
+    window.updateDashboard = function () {
+        const totalWords = rawData.length;
+        const masteredCount = masteredWords.size;
+        const percentage = (masteredCount / totalWords) * 100;
+
+        document.getElementById('total-words-display').innerText = totalWords;
+        document.getElementById('mastered-words-display').innerText = masteredCount;
+        document.getElementById('mastery-progress-bar').style.width = percentage + "%";
+    }
+
+    window.startSession = function () {
+        document.getElementById('start-screen').style.display = 'none';
+        document.getElementById('quiz-screen').style.display = 'block';
+
+        let shuffledAll = shuffle([...rawData]);
+        currentQueue = shuffledAll.slice(0, sessionTotal);
+        answeredCount = 0;
+
+        updateSessionStats();
+        loadNextQuestion();
+    }
+
+    function shuffle(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+        return array;
+    }
+
+    window.updateSessionStats = function () {
+        document.getElementById('progress-text').innerText = `本回進度: ${answeredCount} / ${sessionTotal}`;
+        document.getElementById('remaining-text').innerText = `剩餘隊列: ${currentQueue.length}`;
+    }
+
+    window.loadNextQuestion = function () {
+        if (currentQueue.length === 0) {
+            finishSession();
+            return;
+        }
+
+        currentQuestion = currentQueue[0];
+        selectedOptions = [];
+        isAnswered = false;
+        document.getElementById('feedback-msg').innerText = '';
+        const submitBtn = document.getElementById('submit-btn');
+        submitBtn.disabled = false;
+        submitBtn.innerText = "送出答案";
+
+        document.getElementById('question-kanji').innerText = currentQuestion.w;
+
+        // 產生選項邏輯 (含假讀音)
+        let options = [];
+        let readingOptions = [];
+        readingOptions.push({ type: 'read', txt: currentQuestion.r, isCorrect: true });
+        let trapsR = currentQuestion.tr ? [...currentQuestion.tr] : [];
+        let neededR = 3 - trapsR.length;
+        if (neededR > 0) {
+            let autoTraps = generateFakeReadings(currentQuestion.r, neededR + 2);
+            for (let t of autoTraps) {
+                if (trapsR.length < 3) trapsR.push(t);
             }
         }
-        
-        let fakeStr = fake.join('');
-        if (fakeStr !== correct && fakeStr.length > 0) {
-            fakes.add(fakeStr);
+        trapsR.slice(0, 3).forEach(t => readingOptions.push({ type: 'read', txt: t, isCorrect: false }));
+
+        let meaningOptions = [];
+        meaningOptions.push({ type: 'mean', txt: currentQuestion.m, isCorrect: true });
+        let trapsM = currentQuestion.tm ? [...currentQuestion.tm] : [];
+        let safetyCounter = 0;
+        while (trapsM.length < 3 && safetyCounter < 100) {
+            let rWord = rawData[Math.floor(Math.random() * rawData.length)];
+            if (rWord.m !== currentQuestion.m && !trapsM.includes(rWord.m)) {
+                trapsM.push(rWord.m);
+            }
+            safetyCounter++;
         }
-        maxAttempts--;
-    }
-    
-    while(fakes.size < count) {
-        let randomW = rawData[Math.floor(Math.random() * rawData.length)].r;
-        if(randomW !== correct) fakes.add(randomW);
-    }
-    
-    return Array.from(fakes);
-}
+        trapsM.slice(0, 3).forEach(t => meaningOptions.push({ type: 'mean', txt: t, isCorrect: false }));
 
-function updateSessionStats() {
-    document.getElementById('progress-text').innerText = `本回進度: ${answeredCount} / ${sessionTotal}`;
-    document.getElementById('remaining-text').innerText = `剩餘隊列: ${currentQueue.length}`;
-}
+        options = [...readingOptions, ...meaningOptions];
+        shuffle(options);
 
-function loadNextQuestion() {
-    if (currentQueue.length === 0) {
-        finishSession();
-        return;
+        const container = document.getElementById('options-container');
+        container.innerHTML = '';
+
+        options.forEach((opt, index) => {
+            const btn = document.createElement('div');
+            btn.className = 'option-btn';
+            btn.innerText = opt.txt;
+            btn.dataset.idx = index;
+            btn.dataset.isCorrect = opt.isCorrect;
+            btn.dataset.type = opt.type;
+            btn.onclick = () => selectOption(btn, index);
+            container.appendChild(btn);
+        });
     }
 
-    currentQuestion = currentQueue[0];
-    selectedOptions = [];
-    isAnswered = false;
-    document.getElementById('feedback-msg').innerText = '';
-    document.getElementById('submit-btn').disabled = false;
-    document.getElementById('submit-btn').innerText = "送出答案";
+    // 假名產生器
+    function generateFakeReadings(correct, count) {
+        const modifications = [
+            { from: 'あ', to: 'い' }, { from: 'い', to: 'い' }, { from: 'う', to: 'お' }, { from: 'え', to: 'い' }, { from: 'お', to: 'う' },
+            { from: 'か', to: 'が' }, { from: 'が', to: 'か' }, { from: 'き', to: 'ぎ' }, { from: 'ぎ', to: 'き' },
+            { from: 'く', to: 'ぐ' }, { from: 'ぐ', to: 'く' }, { from: 'け', to: 'げ' }, { from: 'げ', to: 'け' },
+            { from: 'こ', to: 'ご' }, { from: 'ご', to: 'こ' },
+            { from: 'さ', to: 'ざ' }, { from: 'ざ', to: 'さ' }, { from: 'た', to: 'だ' }, { from: 'だ', to: 'た' },
+            { from: 'つ', to: 'っ' }, { from: 'っ', to: 'つ' },
+            { from: 'ゆ', to: 'よ' }, { from: 'よ', to: 'ゆ' },
+            { from: 'び', to: 'ぴ' }, { from: 'ぴ', to: 'び' },
+            { from: 'ん', to: 'う' }, { from: 'う', to: 'ん' }
+        ];
 
-    document.getElementById('question-kanji').innerText = currentQuestion.w;
-    
-    let options = [];
-    
-    // Readings
-    let readingOptions = [];
-    readingOptions.push({type: 'read', txt: currentQuestion.r, isCorrect: true});
-    let trapsR = currentQuestion.tr ? [...currentQuestion.tr] : [];
-    let neededR = 3 - trapsR.length;
-    if (neededR > 0) {
-        let autoTraps = generateFakeReadings(currentQuestion.r, neededR + 2);
-        for (let t of autoTraps) {
-            if (trapsR.length < 3) trapsR.push(t);
+        let fakes = new Set();
+        let maxAttempts = 50;
+
+        while (fakes.size < count && maxAttempts > 0) {
+            let fake = correct.split('');
+            let modCount = Math.random() > 0.7 ? 2 : 1;
+            for (let m = 0; m < modCount; m++) {
+                let idx = Math.floor(Math.random() * fake.length);
+                let char = fake[idx];
+                let possibleMods = modifications.filter(m => m.from === char);
+                if (possibleMods.length > 0) {
+                    fake[idx] = possibleMods[Math.floor(Math.random() * possibleMods.length)].to;
+                } else {
+                    if (char === 'い') fake[idx] = 'え';
+                    else if (char === 'え') fake[idx] = 'い';
+                }
+            }
+            let fakeStr = fake.join('');
+            if (fakeStr !== correct && fakeStr.length > 0) fakes.add(fakeStr);
+            maxAttempts--;
         }
-    }
-    trapsR.slice(0, 3).forEach(t => readingOptions.push({type: 'read', txt: t, isCorrect: false}));
-    
-    // Meanings
-    let meaningOptions = [];
-    meaningOptions.push({type: 'mean', txt: currentQuestion.m, isCorrect: true});
-    let trapsM = currentQuestion.tm ? [...currentQuestion.tm] : [];
-    let safetyCounter = 0;
-    while(trapsM.length < 3 && safetyCounter < 100) {
-        let rWord = rawData[Math.floor(Math.random() * rawData.length)];
-        if (rWord.m !== currentQuestion.m && !trapsM.includes(rWord.m)) {
-            trapsM.push(rWord.m);
+        while (fakes.size < count) {
+            let randomW = rawData[Math.floor(Math.random() * rawData.length)].r;
+            if (randomW !== correct) fakes.add(randomW);
         }
-        safetyCounter++;
-    }
-    trapsM.slice(0, 3).forEach(t => meaningOptions.push({type: 'mean', txt: t, isCorrect: false}));
-    
-    options = [...readingOptions, ...meaningOptions];
-    shuffle(options);
-    
-    const container = document.getElementById('options-container');
-    container.innerHTML = '';
-    
-    options.forEach((opt, index) => {
-        const btn = document.createElement('div');
-        btn.className = 'option-btn';
-        btn.innerText = opt.txt;
-        btn.dataset.idx = index;
-        btn.dataset.isCorrect = opt.isCorrect;
-        btn.dataset.type = opt.type;
-        btn.onclick = () => selectOption(btn, index);
-        container.appendChild(btn);
-    });
-}
-
-function selectOption(btn, index) {
-    if (isAnswered) return;
-    
-    if (selectedOptions.includes(index)) {
-        selectedOptions = selectedOptions.filter(i => i !== index);
-        btn.classList.remove('selected');
-    } else {
-        if (selectedOptions.length < 2) {
-            selectedOptions.push(index);
-            btn.classList.add('selected');
-        }
-    }
-}
-
-function submitAnswer() {
-    if (isAnswered) {
-        loadNextQuestion();
-        return;
+        return Array.from(fakes);
     }
 
-    if (selectedOptions.length !== 2) {
-        alert("請選擇 1 個拼音和 1 個中文意思！");
-        return;
-    }
+    window.selectOption = function (btn, index) {
+        if (isAnswered) return;
 
-    isAnswered = true;
-    const btns = document.querySelectorAll('.option-btn');
-    let correctCount = 0;
-    let typeCheck = {read: 0, mean: 0};
-
-    selectedOptions.forEach(idx => {
-        const btn = btns[idx];
-        const isCorrect = btn.dataset.isCorrect === 'true';
-        const type = btn.dataset.type;
-        typeCheck[type]++;
-        
-        if (isCorrect) {
-            btn.classList.add('correct');
-            correctCount++;
+        if (selectedOptions.includes(index)) {
+            selectedOptions = selectedOptions.filter(i => i !== index);
+            btn.classList.remove('selected');
         } else {
-            btn.classList.add('wrong');
+            if (selectedOptions.length < 2) {
+                selectedOptions.push(index);
+                btn.classList.add('selected');
+            }
         }
-    });
-
-    btns.forEach(btn => {
-        if (btn.dataset.isCorrect === 'true' && !btn.classList.contains('correct')) {
-            btn.classList.add('correct');
-            btn.style.border = "2px dashed #27ae60";
-        }
-    });
-
-    const feedback = document.getElementById('feedback-msg');
-    const submitBtn = document.getElementById('submit-btn');
-
-    if (correctCount === 2 && typeCheck.read === 1 && typeCheck.mean === 1) {
-        feedback.innerText = "正解！";
-        feedback.className = "feedback success";
-        
-        // Save to mastery
-        if (!masteredWords.has(currentQuestion.w)) {
-            masteredWords.add(currentQuestion.w);
-            localStorage.setItem(LS_KEY, JSON.stringify(Array.from(masteredWords)));
-        }
-
-        answeredCount++;
-        currentQueue.shift();
-    } else {
-        feedback.innerText = `答錯了。正確答案：${currentQuestion.r} / ${currentQuestion.m}`;
-        feedback.className = "feedback error";
-        let wrongQ = currentQueue.shift();
-        currentQueue.push(wrongQ);
     }
-    
-    updateSessionStats();
-    submitBtn.innerText = "下一題";
-}
 
-function finishSession() {
-    document.getElementById('quiz-screen').style.display = 'none';
-    document.getElementById('result-screen').style.display = 'block';
-    
-    // Update dashboard stats behind the scenes so they are ready if user goes back?
-    // Actually reload button is easiest.
-    
-    // Small summary
-    document.getElementById('session-summary').innerText = `本次練習共 ${sessionTotal} 題。目前總熟練度：${masteredWords.size} / ${rawData.length}`;
-}
+    window.submitAnswer = function () {
+        if (isAnswered) {
+            loadNextQuestion();
+            return;
+        }
+
+        if (selectedOptions.length !== 2) {
+            alert("請選擇 1 個拼音和 1 個中文意思！");
+            return;
+        }
+
+        isAnswered = true;
+        const btns = document.querySelectorAll('.option-btn');
+        let correctCount = 0;
+        let typeCheck = { read: 0, mean: 0 };
+
+        selectedOptions.forEach(idx => {
+            const btn = btns[idx];
+            const isCorrect = btn.dataset.isCorrect === 'true';
+            const type = btn.dataset.type;
+            typeCheck[type]++;
+
+            if (isCorrect) {
+                btn.classList.add('correct');
+                correctCount++;
+            } else {
+                btn.classList.add('wrong');
+            }
+        });
+
+        btns.forEach(btn => {
+            if (btn.dataset.isCorrect === 'true' && !btn.classList.contains('correct')) {
+                btn.classList.add('correct');
+                btn.style.border = "2px dashed #27ae60";
+            }
+        });
+
+        const feedback = document.getElementById('feedback-msg');
+        const submitBtn = document.getElementById('submit-btn');
+
+        if (correctCount === 2 && typeCheck.read === 1 && typeCheck.mean === 1) {
+            feedback.innerText = "正解！";
+            feedback.className = "feedback success";
+
+            // ★★★ 答對時，存入 Supabase ★★★
+            if (!masteredWords.has(currentQuestion.w)) {
+                masteredWords.add(currentQuestion.w);
+                saveProgressToCloud(currentQuestion.w);
+            }
+
+            answeredCount++;
+            currentQueue.shift();
+        } else {
+            feedback.innerText = `答錯了。正確答案：${currentQuestion.r} / ${currentQuestion.m}`;
+            feedback.className = "feedback error";
+            let wrongQ = currentQueue.shift();
+            currentQueue.push(wrongQ);
+        }
+
+        updateSessionStats();
+        submitBtn.innerText = "下一題";
+    }
+
+    window.finishSession = function () {
+        document.getElementById('quiz-screen').style.display = 'none';
+        document.getElementById('result-screen').style.display = 'block';
+        document.getElementById('session-summary').innerText = `本次練習共 ${sessionTotal} 題。目前總熟練度：${masteredWords.size} / ${rawData.length}`;
+    }
 
 </script>
-</body>
-</html>
